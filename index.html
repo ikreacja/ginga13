@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ginga13 - odliczanie do Kizomba &amp; Semba Champions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap');
+  :root{
+    --bg1:#F8F0DF; --bg2:#EFE1C8;
+    --panel:#FFFCF5; --panel2:#F4E8D2;
+    --ink:#2C2118; --muted:#927F65; --line:#E7D8BC;
+    --red:#C0392B; --gold:#D28E12; --terra:#B5532B;
+    --g1bg:#E9EFCB; --g1bd:#C3CF87;
+    --g2bg:#C3D57E; --g2bd:#9CB44F;
+    --g3bg:#6E9A3A; --g3bd:#557A28;
+    --clay:#A5643C;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--ink);
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));min-height:100vh;
+    font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:24px}
+  .stripe{height:6px;border-radius:4px;max-width:1100px;margin:0 auto 16px;
+    background:linear-gradient(90deg,var(--red) 0 33%,#20160f 33% 66%,var(--gold) 66% 100%)}
+  .wrap{max-width:1100px;margin:0 auto}
+  .brand{font-family:"Fraunces",serif;font-size:34px;font-weight:700;color:var(--ink);letter-spacing:-1px;line-height:1;margin-bottom:2px}
+  .brand .b13{color:var(--gold)}
+  h1{font-family:"Fraunces",serif;font-size:19px;font-weight:600;margin:0 0 4px;color:var(--terra);letter-spacing:-.2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .sync{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;
+    margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px;
+    box-shadow:0 2px 10px rgba(120,80,30,.06)}
+  .dot{width:10px;height:10px;border-radius:50%;background:#b9a988;flex:none}
+  .dot.on{background:#5E8A2E}
+  .dot.off{background:#b9a988}
+  .sync .link{flex:1;min-width:200px;color:var(--muted);word-break:break-all;font-size:12px}
+  .sync button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+  .sync button:hover{border-color:var(--gold)}
+  .todaybar{display:flex;align-items:center;gap:10px;background:var(--panel);
+    border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;
+    padding:12px 16px;margin-bottom:16px;font-size:15px;color:var(--ink);
+    box-shadow:0 2px 10px rgba(120,80,30,.06)}
+  .todaybar .cal{font-size:18px}
+  .todaybar b{font-family:"Fraunces",serif;font-weight:700;color:var(--terra)}
+  .todaybar .tz{color:var(--muted);font-size:12px;font-weight:400}
+  .countdown{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+  .big{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:22px 24px;flex:1;min-width:170px;text-align:center;box-shadow:0 3px 14px rgba(120,80,30,.08)}
+  .big .num{font-family:"Fraunces",serif;font-size:66px;font-weight:700;line-height:1;letter-spacing:-2px}
+  .big .lbl{color:var(--muted);font-size:12px;margin-top:8px;text-transform:uppercase;letter-spacing:1.5px}
+  .big.days .num{color:var(--gold)}
+  .big.weekends .num{color:var(--terra)}
+  .big.trainings .num{color:var(--g3bg)}
+  .statstrip{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:16px;
+    box-shadow:0 2px 10px rgba(120,80,30,.06)}
+  .statstrip b{color:var(--terra);font-size:15px;font-family:"Fraunces",serif}
+  .goalbar{background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+    padding:12px 16px;font-size:13px;color:#6b5b45;margin-bottom:16px;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .goalbar b{color:var(--ink)}
+  .goalbar button{background:var(--panel);color:var(--muted);border:1px solid var(--line);
+    border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+  .goalbar button:hover{color:var(--red);border-color:var(--red)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:18px;align-items:center}
+  .legend .item{display:flex;align-items:center;gap:6px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .sw.g{background:var(--g3bg)}
+  .sw.r{background:var(--red)}
+  .sw.mr{background:#8FA84D;height:6px;border-radius:3px;width:20px}
+  .sw.cls{background:var(--clay);opacity:.5}
+  .months{display:flex;flex-direction:column;gap:26px}
+  .month h2{font-family:"Fraunces",serif;font-size:18px;font-weight:600;margin:0 0 10px;color:var(--terra)}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .dow{font-size:11px;color:var(--muted);text-align:center;padding-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .dow.we{color:var(--terra)}
+  .cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    min-height:92px;padding:6px;position:relative;overflow:hidden;transition:border-color .15s;
+    box-shadow:0 1px 4px rgba(120,80,30,.05)}
+  .cell.empty{background:transparent;border:none;box-shadow:none}
+  .cell .dnum{font-size:13px;font-weight:700;color:var(--ink)}
+  .cell.weekend .dnum{color:var(--terra)}
+  .cell.today{outline:2px solid var(--gold);outline-offset:-2px}
+  .cell.past{opacity:.5}
+  .cell.comp{background:linear-gradient(160deg,#f7dfae,#fff7e6);border-color:var(--gold)}
+  .cell.comp .dnum{color:var(--terra)}
+  .comp-tag{font-family:"Fraunces",serif;font-size:10px;color:var(--red);font-weight:700;margin-top:2px;line-height:1.15}
+  .evarrow{color:var(--gold);text-decoration:none;font-weight:700;font-size:15px;margin-left:3px}
+  .evarrow:hover{color:var(--red)}
+  .evlink{display:inline-block;margin-top:4px;font-size:9px;color:var(--terra);text-decoration:none;border-bottom:1px solid var(--gold)}
+  .evlink:hover{color:var(--red);border-color:var(--red)}
+  .cell.lvl1{background:var(--g1bg);border-color:var(--g1bd)}
+  .cell.lvl2{background:var(--g2bg);border-color:var(--g2bd)}
+  .cell.lvl3{background:var(--g3bg);border-color:var(--g3bd);box-shadow:0 0 0 2px rgba(210,142,18,.35),0 3px 12px rgba(110,154,58,.4)}
+  .cell.lvl3 .dnum{color:#f7f3e2}
+  .cell.lvl3 .chip{color:#eef3d8}
+  .cell.s-red{background:#F4DED7;border-color:var(--red)}
+  .cell.s-red .dnum{color:var(--red)}
+  .success-tag{position:absolute;top:5px;right:6px;font-size:13px;color:var(--gold)}
+  .mr{height:6px;border-radius:3px;background:#8FA84D;opacity:.55;margin:5px 0 3px}
+  .chips{display:flex;flex-direction:column;gap:2px;margin-top:2px}
+  .chip{font-size:9px;line-height:1.15;color:var(--clay);font-weight:500}
+  .pills{display:flex;gap:3px;margin-top:5px}
+  .pill{flex:1;font-size:10px;text-align:center;padding:3px 0;border-radius:5px;
+    border:1px solid var(--line);color:var(--muted);background:rgba(255,255,255,.5);
+    cursor:pointer;user-select:none;font-weight:700;font-family:inherit}
+  .pill:hover{border-color:var(--g2bd)}
+  .pill.on{background:#5E8A2E;border-color:#5E8A2E;color:#fff}
+  .lvl3 .pill{border-color:rgba(255,255,255,.35);color:#eef3d8;background:rgba(0,0,0,.12)}
+  .lvl3 .pill.on{background:#f7f3e2;color:#3c5a1a;border-color:#f7f3e2}
+  .busybtn{position:absolute;top:5px;right:6px;font-size:10px;line-height:1;cursor:pointer;
+    color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:rgba(255,255,255,.5)}
+  .busybtn:hover{color:#fff;background:var(--red);border-color:var(--red)}
+  .busybtn.on{color:#fff;background:var(--red);border-color:var(--red)}
+  .gpanel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+    margin-bottom:16px;box-shadow:0 3px 14px rgba(120,80,30,.08)}
+  .gtop{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .lvlbadge{width:52px;height:52px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+    font-family:"Fraunces",serif;font-size:24px;font-weight:700;color:#fff;
+    background:radial-gradient(circle at 35% 30%,#E7B23F,#B5532B);box-shadow:0 2px 10px rgba(181,83,43,.35);
+    border:2px solid #f3e2bf}
+  .lvlmeta{flex:1;min-width:160px}
+  .lvlname{font-family:"Fraunces",serif;font-size:20px;font-weight:700;color:var(--ink);line-height:1.1}
+  .lvlsub{font-size:12px;color:var(--muted);margin-top:2px}
+  .streak{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--terra);
+    background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 14px}
+  .streak b{font-family:"Fraunces",serif;font-size:18px}
+  .streak span{font-size:11px;color:var(--muted)}
+  .xpbar{position:relative;height:20px;border-radius:999px;background:var(--panel2);
+    border:1px solid var(--line);overflow:hidden}
+  .xpfill{height:100%;width:0;border-radius:999px;
+    background:linear-gradient(90deg,#8FA84D,#6E9A3A);transition:width .5s ease}
+  .xptext{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:600;color:#3a3025}
+  .badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .badge{display:flex;flex-direction:column;align-items:center;gap:3px;width:76px;text-align:center;
+    padding:8px 4px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);
+    opacity:.45;filter:grayscale(1);transition:all .25s}
+  .badge.on{opacity:1;filter:none;background:linear-gradient(160deg,#fff7e6,#f6e6c6);border-color:var(--gold)}
+  .badge .emo{font-size:24px;line-height:1}
+  .badge .bn{font-size:9.5px;font-weight:600;color:var(--ink);line-height:1.15}
+  .mr.done{opacity:1;background:linear-gradient(90deg,var(--gold),#E7B23F);height:8px}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+    background:#2C2118;color:#fff7e6;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;
+    box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:all .35s ease;z-index:50;
+    border:1px solid var(--gold)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .foot{margin-top:20px;color:#6b5b45;font-size:12px;line-height:1.7;
+    background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+  .foot b{color:var(--ink)}
+  .sig{text-align:center;margin:24px auto 8px;color:var(--muted);font-size:13px}
+  .sig .heart{color:var(--red)}
+  .sig a{color:var(--terra);font-weight:700;text-decoration:none;border-bottom:1px solid var(--gold)}
+  .sig a:hover{color:var(--red);border-color:var(--red)}
+</style>
+</head>
+<body>
+  <div class="stripe"></div>
+  <div class="wrap">
+  <div class="brand">Ginga<span class="b13">13</span></div>
+  <h1>Kizomba &amp; Semba Champions - odliczanie <a class="evarrow" href="https://www.facebook.com/events/705498828523259/" target="_blank" rel="noopener" title="Wydarzenie na Facebooku" aria-label="Wydarzenie na Facebooku">&#8599;</a></h1>
+  <div class="sub">Występ: piątek 13 listopada 2026. Irek &amp; Paulina. Gotowi musimy być dzień wcześniej.</div>
+
+  <div class="sync">
+    <span class="dot off" id="syncDot"></span>
+    <span id="syncMsg">Łączenie ze wspólnym magazynem...</span>
+    <span class="link" id="syncLink"></span>
+    <button id="copyBtn" onclick="copyLink()" style="display:none">Kopiuj link dla Pauliny</button>
+    <button id="retryBtn" onclick="retrySync()" style="display:none">Spróbuj ponownie</button>
+  </div>
+
+  <div class="todaybar">
+    <span class="cal">📅</span>
+    <span>Dzisiaj jest <b id="todayText">-</b><span class="tz"> (czas warszawski)</span></span>
+  </div>
+
+  <div class="countdown">
+    <div class="big days"><div class="num" id="nDays">-</div><div class="lbl">dni do występu</div></div>
+    <div class="big weekends"><div class="num" id="nWeekends">-</div><div class="lbl">weekendy pozostałe</div></div>
+    <div class="big trainings"><div class="num" id="nTrainings">-</div><div class="lbl">wspólne treningi</div></div>
+  </div>
+
+  <div class="gpanel">
+    <div class="gtop">
+      <div class="lvlbadge" id="lvlNum">1</div>
+      <div class="lvlmeta">
+        <div class="lvlname" id="lvlName">Iniciante</div>
+        <div class="lvlsub">Poziom <span id="lvlP">1</span> · <b id="xpTotal">0</b> XP łącznie</div>
+      </div>
+      <div class="streak">🔥 <b id="streakN">0</b><span>dni z rzędu</span></div>
+    </div>
+    <div class="xpbar"><div class="xpfill" id="xpFill"></div><span class="xptext" id="xpText">0 / 60 XP do następnego poziomu</span></div>
+    <div class="badges" id="badges"></div>
+  </div>
+
+  <div class="statstrip">
+    <span>Irek: <b id="sI">0</b></span>
+    <span>Paulina: <b id="sP">0</b></span>
+    <span>Razem: <b id="sR">0</b></span>
+    <span>Dni z kompletem (I + P + I+P): <b id="sFull">0</b></span>
+  </div>
+
+  <div class="goalbar">
+    <span>Cel: zobaczyć czarno na białym, jak <b>mało</b> czasu zostało. Każdy zielony kwadrat to realna praca. Każdy czerwony to dzień, którego nie ma.</span>
+    <button onclick="resetAll()">Wyczyść zaznaczenia</button>
+  </div>
+
+  <div class="legend">
+    <div class="item"><span class="sw g"></span> I = Irek, P = Paulina, I+P = razem</div>
+    <div class="item">im więcej znaczników, tym jaśniejsza zieleń (komplet = ✓)</div>
+    <div class="item"><span class="sw r"></span> dzień zajęty - czerwony ✕ w rogu</div>
+    <div class="item"><span class="sw mr"></span> poranna ginga ~30 min - kliknij pasek, gdy zrobiona (+5 XP)</div>
+    <div class="item"><span class="sw cls"></span> stałe zajęcia (przypomnienie)</div>
+  </div>
+
+  <div class="months" id="months"></div>
+
+  <div class="foot">
+    W każdym dniu są trzy pigułki: <b>I</b> (Irek), <b>P</b> (Paulina), <b>I+P</b> (razem). Kliknij, żeby zaznaczyć. Im więcej, tym jaśniejsza zieleń, a komplet daje ✓.<br>
+    Czerwony <b>✕</b> w rogu = dzień zajęty (wyjazd itp.).<br>
+    Za każdy trening dostajesz XP (indywidualny 15, wspólny 10, ginga 5), zbierasz poziomy, serię dni z rzędu i odznaki. Klikaj codziennie, żeby seria rosła.<br>
+    Stałe zajęcia: niedziela SoSalsa Gdańsk 17-19, poniedziałek SoSalsa Gdańsk 18-20 + practice 20-21, wtorek Energy Gdynia 20-22, czwartek Rytm Sopot 20-22.<br>
+    Zaznaczenia synchronizują się między Tobą a Pauliną przez wspólny link. Bez sieci działa lokalnie.
+  </div>
+
+  <div class="sig">made with love <span class="heart">&#10084;</span> by <a href="https://ikreacja.pl" target="_blank" rel="noopener">iKreacja.pl</a></div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+  const TARGET=new Date(2026,10,13);
+  const START={y:2026,m:6}, END={y:2026,m:10};
+  const DOW=["pon","wt","śr","czw","pt","sob","ndz"];
+  const MH=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
+  const MG=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+  const WD=["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
+  const CLASSES={0:["SoSalsa Gdańsk 17-19"],1:["SoSalsa Gdańsk 18-20","Practice 20-21"],2:["Energy Gdynia 20-22"],4:["Rytm Sopot 20-22"]};
+
+  // ---------- dane ----------
+  let store=loadLocal();
+  function loadLocal(){
+    try{
+      const v2=localStorage.getItem("kiz-cal-v2");
+      if(v2) return JSON.parse(v2);
+      const old=JSON.parse(localStorage.getItem("kiz-cal")||"null");
+      if(old){ const days={}; for(const k in old){
+        let o=old[k];
+        if(typeof o==="string") o={i:o==="g",p:false,r:false,busy:o==="r"};
+        days[k]={i:!!o.i||!!o.ja,p:!!o.p||!!o.pa,r:!!o.r||!!o.ra,g:!!o.g,busy:!!o.busy,t:Date.now()};
+      } return {days}; }
+    }catch(e){}
+    return {days:{}};
+  }
+  function saveLocal(){ localStorage.setItem("kiz-cal-v2",JSON.stringify(store)); }
+  function cell(k){ return store.days[k]||{i:false,p:false,r:false,g:false,busy:false,t:0}; }
+  function setCellData(k,o){ o.t=Date.now(); store.days[k]=o; saveLocal(); schedulePush(); }
+  function keyOf(d){ return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
+  function isWeekend(d){ const g=d.getDay(); return g===0||g===6; }
+  // "dzisiaj" zawsze wg czasu warszawskiego, niezależnie od strefy urządzenia
+  function today(){
+    try{
+      const p=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Warsaw",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+      const y=+p.find(x=>x.type==="year").value, m=+p.find(x=>x.type==="month").value, d=+p.find(x=>x.type==="day").value;
+      return new Date(y,m-1,d);
+    }catch(e){ const t=new Date(); t.setHours(0,0,0,0); return t; }
+  }
+
+  // ---------- synchronizacja ----------
+  const REMOTE="https://jsonblob.com/api/jsonBlob";
+  let blobId=new URLSearchParams(location.search).get("id")||localStorage.getItem("kiz-blob")||null;
+  let online=false, pushTimer=null;
+
+  function mergeDays(remote){
+    let changed=false;
+    for(const k in remote){
+      const r=remote[k], l=store.days[k];
+      if(!l || (r.t||0)>(l.t||0)){ store.days[k]=r; changed=true; }
+    }
+    return changed;
+  }
+  async function createBlob(){
+    const res=await fetch(REMOTE,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({days:store.days})});
+    if(res.status===201||res.ok){
+      const loc=res.headers.get("Location")||"";
+      const id=loc.split("/").filter(Boolean).pop();
+      if(id){ blobId=id; localStorage.setItem("kiz-blob",id); return true; }
+    }
+    return false;
+  }
+  async function getRemote(){
+    if(!blobId) return null;
+    const res=await fetch(REMOTE+"/"+blobId,{headers:{"Accept":"application/json"}});
+    if(res.ok) return await res.json();
+    return null;
+  }
+  async function putRemote(){
+    if(!blobId) return false;
+    const res=await fetch(REMOTE+"/"+blobId,{method:"PUT",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({days:store.days})});
+    return res.ok;
+  }
+  function schedulePush(){
+    if(!online){ return; }
+    clearTimeout(pushTimer);
+    pushTimer=setTimeout(async()=>{
+      try{ const r=await getRemote(); if(r&&r.days) mergeDays(r.days); await putRemote(); saveLocal(); render(); }
+      catch(e){ setOnline(false); }
+    },700);
+  }
+  async function pollOnce(){
+    if(!online) return;
+    try{ const r=await getRemote(); if(r&&r.days){ if(mergeDays(r.days)){ saveLocal(); render(); } } }
+    catch(e){ setOnline(false); }
+  }
+  function shareLink(){ return location.origin+location.pathname+"?id="+blobId; }
+  function syncUrl(){ if(blobId){ history.replaceState(null,"","?id="+blobId); } }
+  function setOnline(v){ online=v; updateSyncUI(); }
+  function updateSyncUI(){
+    const dot=document.getElementById("syncDot"), msg=document.getElementById("syncMsg"),
+      link=document.getElementById("syncLink"), copy=document.getElementById("copyBtn"), retry=document.getElementById("retryBtn");
+    if(online&&blobId){
+      dot.className="dot on"; msg.textContent="Synchronizacja włączona.";
+      link.textContent=shareLink(); copy.style.display=""; retry.style.display="none";
+    }else{
+      dot.className="dot off"; msg.textContent="Tryb offline - zapis tylko na tym urządzeniu.";
+      link.textContent=""; copy.style.display="none"; retry.style.display="";
+    }
+  }
+  function copyLink(){
+    navigator.clipboard.writeText(shareLink()).then(()=>{
+      const b=document.getElementById("copyBtn"); const t=b.textContent; b.textContent="Skopiowano ✓";
+      setTimeout(()=>b.textContent=t,1500);
+    });
+  }
+  async function retrySync(){ document.getElementById("syncMsg").textContent="Łączenie..."; await initSync(); }
+  async function initSync(){
+    try{
+      if(!blobId){ if(await createBlob()){ setOnline(true); syncUrl(); await putRemote(); } else setOnline(false); }
+      else{ const r=await getRemote(); if(r){ if(r.days) mergeDays(r.days); saveLocal(); setOnline(true); syncUrl(); } else setOnline(false); }
+    }catch(e){ setOnline(false); }
+    render();
+    if(online){ clearInterval(window._poll); window._poll=setInterval(pollOnce,12000); }
+  }
+
+  // ---------- render ----------
+  function render(){ buildMonths(); updateCounters(); }
+  function buildMonths(){
+    const cont=document.getElementById("months"); cont.innerHTML="";
+    let y=START.y,m=START.m;
+    while(y<END.y||(y===END.y&&m<=END.m)){ cont.appendChild(renderMonth(y,m)); m++; if(m>11){m=0;y++;} }
+  }
+  function renderMonth(y,m){
+    const wrap=document.createElement("div"); wrap.className="month";
+    const h=document.createElement("h2"); h.textContent=MH[m]+" "+y; wrap.appendChild(h);
+    const grid=document.createElement("div"); grid.className="grid";
+    DOW.forEach((d,i)=>{ const el=document.createElement("div"); el.className="dow"+(i>=5?" we":""); el.textContent=d; grid.appendChild(el); });
+    const first=new Date(y,m,1); let lead=(first.getDay()+6)%7;
+    for(let i=0;i<lead;i++){ const e=document.createElement("div"); e.className="cell empty"; grid.appendChild(e); }
+    const days=new Date(y,m+1,0).getDate(); const t=today();
+    for(let dn=1;dn<=days;dn++){
+      const d=new Date(y,m,dn); const c=document.createElement("div"); c.className="cell"; const k=keyOf(d);
+      if(isWeekend(d)) c.classList.add("weekend");
+      if(d.getTime()===t.getTime()) c.classList.add("today");
+      if(d<t) c.classList.add("past");
+      const isComp=(d.getFullYear()===TARGET.getFullYear()&&d.getMonth()===TARGET.getMonth()&&d.getDate()===TARGET.getDate());
+      if(isComp){ c.classList.add("comp"); c.innerHTML='<div class="dnum">'+dn+'</div><div class="comp-tag">WYSTĘP<br>Champions</div><a class="evlink" href="https://www.facebook.com/events/705498828523259/" target="_blank" rel="noopener">wydarzenie ↗</a>'; grid.appendChild(c); continue; }
+      const data=cell(k); const cnt=(data.i?1:0)+(data.p?1:0)+(data.r?1:0);
+      if(data.busy) c.classList.add("s-red");
+      else if(cnt===1) c.classList.add("lvl1");
+      else if(cnt===2) c.classList.add("lvl2");
+      else if(cnt>=3) c.classList.add("lvl3");
+      let html='<div class="dnum">'+dn+'</div>';
+      html+='<div class="busybtn'+(data.busy?' on':'')+'" data-act="busy" title="Dzień zajęty">✕</div>';
+      html+='<div class="mr'+(data.g?' done':'')+'" data-act="g" title="Poranna ginga - kliknij, gdy zrobiona (+5 XP)"></div>';
+      const cls=CLASSES[d.getDay()]; if(cls){ html+='<div class="chips">'+cls.map(x=>'<span class="chip">'+x+'</span>').join("")+'</div>'; }
+      html+='<div class="pills">'
+        +'<span class="pill'+(data.i?' on':'')+'" data-act="i">I</span>'
+        +'<span class="pill'+(data.p?' on':'')+'" data-act="p">P</span>'
+        +'<span class="pill'+(data.r?' on':'')+'" data-act="r">I+P</span>'
+        +'</div>';
+      if(cnt>=3) html+='<span class="success-tag">✓</span>';
+      c.innerHTML=html;
+      c.querySelectorAll("[data-act]").forEach(btn=>{
+        btn.addEventListener("click",(e)=>{
+          e.stopPropagation();
+          const act=btn.getAttribute("data-act"); const cur=cell(k);
+          const o={i:cur.i,p:cur.p,r:cur.r,g:cur.g,busy:cur.busy};
+          o[act]=!o[act];
+          if(act==="busy"&&o.busy){ o.i=o.p=o.r=false; }
+          if(act!=="busy"&&act!=="g"&&o[act]){ o.busy=false; }
+          setCellData(k,o); render();
+        });
+      });
+      grid.appendChild(c);
+    }
+    wrap.appendChild(grid); return wrap;
+  }
+  // ---------- grywalizacja ----------
+  const LEVELS=[
+    {p:1,name:"Iniciante",xp:0},
+    {p:2,name:"Aprendiz",xp:60},
+    {p:3,name:"Dançarino",xp:150},
+    {p:4,name:"Sabroso",xp:300},
+    {p:5,name:"Mestre do Semba",xp:500},
+    {p:6,name:"Campeão",xp:800}
+  ];
+  function isActive(d){ const o=cell(keyOf(d)); return !!(o.i||o.p||o.r||o.g); }
+  function computeStreak(){
+    let anchor=today();
+    if(!isActive(anchor)){ const y=new Date(anchor); y.setDate(y.getDate()-1); if(isActive(y)) anchor=y; else return 0; }
+    let s=0; const d=new Date(anchor);
+    while(isActive(d)){ s++; d.setDate(d.getDate()-1); }
+    return s;
+  }
+  const BADGES=[
+    {id:"first",emo:"🥾",name:"Pierwszy krok",cond:s=>s.indiv+s.r>=1},
+    {id:"solo10",emo:"🕺",name:"Solista x10",cond:s=>s.indiv>=10},
+    {id:"duet10",emo:"👫",name:"Zgrany duet",cond:s=>s.r>=10},
+    {id:"streak7",emo:"🔥",name:"Tydzień w rytmie",cond:s=>s.streak>=7},
+    {id:"ginga15",emo:"🌅",name:"Poranny rytuał",cond:s=>s.g>=15},
+    {id:"xp100",emo:"💯",name:"Setka XP",cond:s=>s.xp>=100},
+    {id:"champ",emo:"⭐",name:"Gotowi na scenę",cond:s=>s.level>=6}
+  ];
+  let gState={init:false,level:0,badges:new Set()};
+  let toastQ=[], toastBusy=false;
+  function toast(msg){ toastQ.push(msg); if(!toastBusy) nextToast(); }
+  function nextToast(){
+    if(!toastQ.length){ toastBusy=false; return; }
+    toastBusy=true; const el=document.getElementById("toast"); el.textContent=toastQ.shift();
+    el.classList.add("show");
+    setTimeout(()=>{ el.classList.remove("show"); setTimeout(nextToast,450); },2200);
+  }
+
+  function updateCounters(){
+    const t=today();
+    document.getElementById("todayText").textContent=WD[t.getDay()]+", "+t.getDate()+" "+MG[t.getMonth()]+" "+t.getFullYear();
+    document.getElementById("nDays").textContent=Math.max(0,Math.round((TARGET-t)/86400000));
+    let we=0; const d=new Date(t); while(d<TARGET){ if(d.getDay()===6) we++; d.setDate(d.getDate()+1); }
+    document.getElementById("nWeekends").textContent=we;
+    let i=0,p=0,r=0,g=0,full=0;
+    for(const k in store.days){ const o=store.days[k]; if(!o) continue;
+      if(o.i) i++; if(o.p) p++; if(o.r) r++; if(o.g) g++; if(o.i&&o.p&&o.r) full++; }
+    document.getElementById("nTrainings").textContent=r;
+    document.getElementById("sI").textContent=i; document.getElementById("sP").textContent=p;
+    document.getElementById("sR").textContent=r; document.getElementById("sFull").textContent=full;
+
+    const indiv=i+p;
+    const xp=15*indiv+10*r+5*g;
+    let lvl=LEVELS[0], next=null;
+    for(let n=0;n<LEVELS.length;n++){ if(xp>=LEVELS[n].xp){ lvl=LEVELS[n]; next=LEVELS[n+1]||null; } }
+    const streak=computeStreak();
+    const stats={indiv,r,g,xp,level:lvl.p,streak};
+
+    document.getElementById("lvlNum").textContent=lvl.p;
+    document.getElementById("lvlName").textContent=lvl.name;
+    document.getElementById("lvlP").textContent=lvl.p;
+    document.getElementById("xpTotal").textContent=xp;
+    document.getElementById("streakN").textContent=streak;
+    const fill=document.getElementById("xpFill"), xtext=document.getElementById("xpText");
+    if(next){ const pct=Math.max(0,Math.min(100,(xp-lvl.xp)/(next.xp-lvl.xp)*100));
+      fill.style.width=pct+"%"; xtext.textContent=(xp-lvl.xp)+" / "+(next.xp-lvl.xp)+" XP do: "+next.name; }
+    else{ fill.style.width="100%"; xtext.textContent="Maksymalny poziom - Campeão!"; }
+
+    const unlocked=new Set();
+    const bc=document.getElementById("badges"); bc.innerHTML="";
+    BADGES.forEach(b=>{ const on=b.cond(stats); if(on) unlocked.add(b.id);
+      const el=document.createElement("div"); el.className="badge"+(on?" on":"");
+      el.title=b.name+(on?" - zdobyta":" - zablokowana");
+      el.innerHTML='<span class="emo">'+b.emo+'</span><span class="bn">'+b.name+'</span>';
+      bc.appendChild(el); });
+
+    if(!gState.init){ gState.init=true; gState.level=lvl.p; gState.badges=new Set(unlocked); }
+    else{
+      if(lvl.p>gState.level){ toast("Nowy poziom "+lvl.p+": "+lvl.name+" 🎉"); gState.level=lvl.p; }
+      unlocked.forEach(id=>{ if(!gState.badges.has(id)){ const b=BADGES.find(x=>x.id===id);
+        toast("Odznaka zdobyta: "+b.name+" "+b.emo); gState.badges.add(id); } });
+    }
+  }
+  function resetAll(){
+    if(!confirm("Wyczyścić wszystkie zaznaczenia? Dotyczy też wspólnego magazynu.")) return;
+    const now=Date.now();
+    for(const k in store.days){ store.days[k]={i:false,p:false,r:false,g:false,busy:false,t:now}; }
+    saveLocal(); render(); schedulePush();
+  }
+
+  render();
+  updateSyncUI();
+  initSync();
+</script>
+</body>
+</html>
