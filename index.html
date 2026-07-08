@@ -133,6 +133,11 @@
     color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:rgba(255,255,255,.5)}
   .busybtn:hover{color:#fff;background:var(--red);border-color:var(--red)}
   .busybtn.on{color:#fff;background:var(--red);border-color:var(--red)}
+  .gwrap{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+  .gwrap .gpanel{flex:1;min-width:300px;margin-bottom:0}
+  .pname{font-family:"Fraunces",serif;font-weight:700;font-size:16px;color:var(--terra);margin-bottom:12px}
+  .gpanel.paulina .pname{color:#9C3F5E}
+  .gpanel.paulina .lvlbadge{background:radial-gradient(circle at 35% 30%,#D98BA0,#9C3F5E)}
   .gpanel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
     margin-bottom:16px;box-shadow:0 3px 14px rgba(120,80,30,.08)}
   .gtop{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
@@ -208,18 +213,7 @@
     <div class="big trainings"><div class="num" id="nTrainings">-</div><div class="lbl">wspólne treningi</div></div>
   </div>
 
-  <div class="gpanel">
-    <div class="gtop">
-      <div class="lvlbadge" id="lvlNum">1</div>
-      <div class="lvlmeta">
-        <div class="lvlname" id="lvlName">Iniciante</div>
-        <div class="lvlsub">Poziom <span id="lvlP">1</span> · <b id="xpTotal">0</b> XP łącznie</div>
-      </div>
-      <div class="streak">🔥 <b id="streakN">0</b><span>dni z rzędu</span></div>
-    </div>
-    <div class="xpbar"><div class="xpfill" id="xpFill"></div><span class="xptext" id="xpText">0 / 60 XP do następnego poziomu</span></div>
-    <div class="badges" id="badges"></div>
-  </div>
+  <div class="gwrap" id="gwrap"></div>
 
   <div class="statstrip">
     <span>Irek: <b id="sI">0</b></span>
@@ -246,7 +240,7 @@
   <div class="foot">
     W każdym dniu są trzy pigułki: <b>I</b> (Irek), <b>P</b> (Paulina), <b>I+P</b> (razem). Kliknij, żeby zaznaczyć. Im więcej, tym jaśniejsza zieleń, a komplet daje ✓.<br>
     Czerwony <b>✕</b> w rogu = dzień zajęty (wyjazd itp.).<br>
-    Za każdy trening dostajesz XP (indywidualny 15, wspólny 10, ginga 5), zbierasz poziomy, serię dni z rzędu i odznaki. Klikaj codziennie, żeby seria rosła.<br>
+    Irek i Paulina mają osobne liczniki XP i poziomy. Punkty: trening indywidualny 15, para 10, ginga 5. Trening w parze (I+P) i ginga liczą się każdemu z osobna. Klikaj codziennie, żeby seria rosła.<br>
     Stałe zajęcia: niedziela SoSalsa Gdańsk 17-19, poniedziałek SoSalsa Gdańsk 18-20 + practice 20-21, wtorek Energy Gdynia 20-22, czwartek Rytm Sopot 20-22.<br>
     Zaznaczenia synchronizują się między Tobą a Pauliną przez wspólną bazę. Oboje wchodzicie na ten sam adres. Bez sieci działa lokalnie, a zmiany dogrywają się po powrocie online.
   </div>
@@ -296,7 +290,27 @@
   // ---------- synchronizacja ----------
   // Firebase Realtime Database - wspólny węzeł dla obu osób
   const FB="https://ginga1-6e76c-default-rtdb.europe-west1.firebasedatabase.app/state.json";
-  let online=false, pushTimer=null;
+  const FB_KEY="AIzaSyAhkE47zyo1kqWi8CtM3DCTYi7IQAr37SU";
+  let online=false, pushTimer=null, idToken=null, refreshTimer=null;
+
+  // ciche logowanie anonimowe; reuse refresh tokenu, żeby nie mnożyć kont
+  async function fbAuth(){
+    try{
+      const rt=localStorage.getItem("kiz-rtok");
+      if(rt){
+        const r=await fetch("https://securetoken.googleapis.com/v1/token?key="+FB_KEY,
+          {method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},
+           body:"grant_type=refresh_token&refresh_token="+encodeURIComponent(rt)});
+        if(r.ok){ const j=await r.json(); idToken=j.id_token; localStorage.setItem("kiz-rtok",j.refresh_token); planRefresh(+j.expires_in); return true; }
+      }
+      const r2=await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+FB_KEY,
+        {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({returnSecureToken:true})});
+      if(r2.ok){ const j=await r2.json(); idToken=j.idToken; localStorage.setItem("kiz-rtok",j.refreshToken); planRefresh(+j.expiresIn); return true; }
+    }catch(e){}
+    return false;
+  }
+  function planRefresh(sec){ clearTimeout(refreshTimer); refreshTimer=setTimeout(fbAuth, Math.max(60,(sec-300))*1000); }
+  function authQ(){ return idToken?("?auth="+idToken):""; }
 
   function mergeDays(remote){
     let changed=false;
@@ -307,12 +321,12 @@
     return changed;
   }
   async function getRemote(){
-    const res=await fetch(FB,{headers:{"Accept":"application/json"}});
+    const res=await fetch(FB+authQ(),{headers:{"Accept":"application/json"}});
     if(res.ok) return await res.json();
     return null;
   }
   async function putRemote(){
-    const res=await fetch(FB,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({days:store.days})});
+    const res=await fetch(FB+authQ(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({days:store.days})});
     return res.ok;
   }
   function schedulePush(){
@@ -359,11 +373,12 @@
   }
   async function initSync(){
     try{
-      const r=await getRemote();          // null gdy baza pusta - to normalne przy pierwszym uruchomieniu
+      await fbAuth();                     // najpierw token (wymagany przez reguły)
+      const r=await getRemote();          // null gdy baza pusta - normalne przy pierwszym uruchomieniu
       if(r&&r.days) mergeDays(r.days);
       saveLocal();
-      await putRemote();                  // dograj lokalne dane do wspólnej bazy
-      setOnline(true);
+      const ok=await putRemote();         // dograj lokalne dane do wspólnej bazy
+      setOnline(!!ok);
     }catch(e){ setOnline(false); }
     render();
     if(online){ clearInterval(window._poll); window._poll=setInterval(pollOnce,12000); }
@@ -431,13 +446,13 @@
     {p:5,name:"Mestre do Semba",xp:500},
     {p:6,name:"Campeão",xp:800}
   ];
-  function isActive(d){ const o=cell(keyOf(d)); return !!(o.i||o.p||o.r||o.g); }
-  function computeStreak(){
+  function levelOf(xp){ let lvl=LEVELS[0],next=null;
+    for(let n=0;n<LEVELS.length;n++){ if(xp>=LEVELS[n].xp){ lvl=LEVELS[n]; next=LEVELS[n+1]||null; } }
+    return {lvl,next}; }
+  function streakFor(activeFn){
     let anchor=today();
-    if(!isActive(anchor)){ const y=new Date(anchor); y.setDate(y.getDate()-1); if(isActive(y)) anchor=y; else return 0; }
-    let s=0; const d=new Date(anchor);
-    while(isActive(d)){ s++; d.setDate(d.getDate()-1); }
-    return s;
+    if(!activeFn(anchor)){ const y=new Date(anchor); y.setDate(y.getDate()-1); if(activeFn(y)) anchor=y; else return 0; }
+    let s=0; const d=new Date(anchor); while(activeFn(d)){ s++; d.setDate(d.getDate()-1); } return s;
   }
   const BADGES=[
     {id:"first",emo:"🥾",name:"Pierwszy krok",cond:s=>s.indiv+s.r>=1},
@@ -448,7 +463,32 @@
     {id:"xp100",emo:"💯",name:"Setka XP",cond:s=>s.xp>=100},
     {id:"champ",emo:"⭐",name:"Gotowi na scenę",cond:s=>s.level>=6}
   ];
-  let gState={init:false,level:0,badges:new Set()};
+  const gState={ irek:{init:false,level:0,badges:new Set()}, paulina:{init:false,level:0,badges:new Set()} };
+  function personStats(ownKey, counts){
+    const indiv=counts[ownKey], r=counts.r, g=counts.g;
+    const xp=15*indiv+10*r+5*g; const {lvl,next}=levelOf(xp);
+    const activeFn=(d)=>{ const o=cell(keyOf(d)); return !!(o[ownKey]||o.r||o.g); };
+    return {indiv,r,g,xp,lvl,next,level:lvl.p,streak:streakFor(activeFn)};
+  }
+  function renderPanel(name, cls, s, stKey){
+    let bhtml=""; const unlocked=new Set();
+    BADGES.forEach(b=>{ const on=b.cond(s); if(on) unlocked.add(b.id);
+      bhtml+='<div class="badge'+(on?" on":"")+'" title="'+b.name+(on?" - zdobyta":" - zablokowana")+'"><span class="emo">'+b.emo+'</span><span class="bn">'+b.name+'</span></div>'; });
+    let xpb;
+    if(s.next){ const pct=Math.max(0,Math.min(100,(s.xp-s.lvl.xp)/(s.next.xp-s.lvl.xp)*100));
+      xpb='<div class="xpfill" style="width:'+pct+'%"></div><span class="xptext">'+(s.xp-s.lvl.xp)+' / '+(s.next.xp-s.lvl.xp)+' XP do: '+s.next.name+'</span>'; }
+    else xpb='<div class="xpfill" style="width:100%"></div><span class="xptext">Maksymalny poziom - Campeão!</span>';
+    const html='<div class="gpanel '+cls+'"><div class="pname">'+name+'</div><div class="gtop">'
+      +'<div class="lvlbadge">'+s.lvl.p+'</div><div class="lvlmeta"><div class="lvlname">'+s.lvl.name+'</div>'
+      +'<div class="lvlsub">Poziom '+s.lvl.p+' · <b>'+s.xp+'</b> XP · trening '+s.indiv+' + para '+s.r+'</div></div>'
+      +'<div class="streak">🔥 <b>'+s.streak+'</b><span>dni z rzędu</span></div></div>'
+      +'<div class="xpbar">'+xpb+'</div><div class="badges">'+bhtml+'</div></div>';
+    const gs=gState[stKey];
+    if(!gs.init){ gs.init=true; gs.level=s.level; gs.badges=new Set(unlocked); }
+    else{ if(s.level>gs.level){ toast(name+" - nowy poziom "+s.level+": "+s.lvl.name+" 🎉"); gs.level=s.level; }
+      unlocked.forEach(id=>{ if(!gs.badges.has(id)){ const b=BADGES.find(x=>x.id===id); toast(name+" - odznaka: "+b.name+" "+b.emo); gs.badges.add(id); } }); }
+    return html;
+  }
   let toastQ=[], toastBusy=false;
   function toast(msg){ toastQ.push(msg); if(!toastBusy) nextToast(); }
   function nextToast(){
@@ -471,37 +511,9 @@
     document.getElementById("sI").textContent=i; document.getElementById("sP").textContent=p;
     document.getElementById("sR").textContent=r; document.getElementById("sFull").textContent=full;
 
-    const indiv=i+p;
-    const xp=15*indiv+10*r+5*g;
-    let lvl=LEVELS[0], next=null;
-    for(let n=0;n<LEVELS.length;n++){ if(xp>=LEVELS[n].xp){ lvl=LEVELS[n]; next=LEVELS[n+1]||null; } }
-    const streak=computeStreak();
-    const stats={indiv,r,g,xp,level:lvl.p,streak};
-
-    document.getElementById("lvlNum").textContent=lvl.p;
-    document.getElementById("lvlName").textContent=lvl.name;
-    document.getElementById("lvlP").textContent=lvl.p;
-    document.getElementById("xpTotal").textContent=xp;
-    document.getElementById("streakN").textContent=streak;
-    const fill=document.getElementById("xpFill"), xtext=document.getElementById("xpText");
-    if(next){ const pct=Math.max(0,Math.min(100,(xp-lvl.xp)/(next.xp-lvl.xp)*100));
-      fill.style.width=pct+"%"; xtext.textContent=(xp-lvl.xp)+" / "+(next.xp-lvl.xp)+" XP do: "+next.name; }
-    else{ fill.style.width="100%"; xtext.textContent="Maksymalny poziom - Campeão!"; }
-
-    const unlocked=new Set();
-    const bc=document.getElementById("badges"); bc.innerHTML="";
-    BADGES.forEach(b=>{ const on=b.cond(stats); if(on) unlocked.add(b.id);
-      const el=document.createElement("div"); el.className="badge"+(on?" on":"");
-      el.title=b.name+(on?" - zdobyta":" - zablokowana");
-      el.innerHTML='<span class="emo">'+b.emo+'</span><span class="bn">'+b.name+'</span>';
-      bc.appendChild(el); });
-
-    if(!gState.init){ gState.init=true; gState.level=lvl.p; gState.badges=new Set(unlocked); }
-    else{
-      if(lvl.p>gState.level){ toast("Nowy poziom "+lvl.p+": "+lvl.name+" 🎉"); gState.level=lvl.p; }
-      unlocked.forEach(id=>{ if(!gState.badges.has(id)){ const b=BADGES.find(x=>x.id===id);
-        toast("Odznaka zdobyta: "+b.name+" "+b.emo); gState.badges.add(id); } });
-    }
+    const counts={i,p,r,g};
+    const sIrek=personStats("i",counts), sPaul=personStats("p",counts);
+    document.getElementById("gwrap").innerHTML=renderPanel("Irek","irek",sIrek,"irek")+renderPanel("Paulina","paulina",sPaul,"paulina");
   }
   function resetAll(){
     if(!confirm("Wyczyścić wszystkie zaznaczenia? Dotyczy też wspólnego magazynu.")) return;
