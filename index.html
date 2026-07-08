@@ -27,6 +27,18 @@
   .wrap{max-width:1100px;margin:0 auto}
   .brand{font-family:"Fraunces",serif;font-size:34px;font-weight:700;color:var(--ink);letter-spacing:-1px;line-height:1;margin-bottom:2px}
   .brand .b13{color:var(--gold)}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+  .headleft{flex:1;min-width:240px}
+  .headleft .sub{margin-bottom:0}
+  .tech{display:flex;flex-direction:column;gap:6px;align-items:flex-end;font-size:11px;color:var(--muted);
+    opacity:.75;transition:opacity .2s}
+  .tech:hover{opacity:1}
+  .techrow{display:flex;align-items:center;gap:6px}
+  .techmsg{color:var(--muted)}
+  .tech .dot{width:8px;height:8px}
+  .tech button,.tech .fbtn{background:var(--panel2);color:var(--muted);border:1px solid var(--line);
+    border-radius:7px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:inherit}
+  .tech button:hover,.tech .fbtn:hover{color:var(--ink);border-color:var(--gold)}
   h1{font-family:"Fraunces",serif;font-size:19px;font-weight:600;margin:0 0 4px;color:var(--terra);letter-spacing:-.2px}
   .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
   .sync{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;
@@ -166,23 +178,23 @@
 <body>
   <div class="stripe"></div>
   <div class="wrap">
-  <div class="brand">Ginga<span class="b13">13</span></div>
-  <h1>Kizomba &amp; Semba Champions - odliczanie <a class="evarrow" href="https://www.facebook.com/events/705498828523259/" target="_blank" rel="noopener" title="Wydarzenie na Facebooku" aria-label="Wydarzenie na Facebooku">&#8599;</a></h1>
-  <div class="sub">Występ: piątek 13 listopada 2026. Irek &amp; Paulina. Gotowi musimy być dzień wcześniej.</div>
-
-  <div class="sync">
-    <span class="dot off" id="syncDot"></span>
-    <span id="syncMsg">Łączenie ze wspólnym magazynem...</span>
-    <span class="link" id="syncLink"></span>
-    <button id="copyBtn" onclick="copyLink()" style="display:none">Kopiuj link dla Pauliny</button>
-    <button id="retryBtn" onclick="retrySync()" style="display:none">Spróbuj ponownie</button>
-  </div>
-
-  <div class="backup">
-    <span>Kopia zapasowa danych:</span>
-    <button onclick="exportData()">Zapisz kopię</button>
-    <label class="fbtn">Wczytaj kopię<input type="file" id="importFile" accept="application/json,.json" onchange="importData(event)" hidden></label>
-    <span style="font-size:11px">- przenieś zaznaczenia na inne urządzenie lub zrób backup</span>
+  <div class="header">
+    <div class="headleft">
+      <div class="brand">Ginga<span class="b13">13</span></div>
+      <h1>Kizomba &amp; Semba Champions - odliczanie <a class="evarrow" href="https://www.facebook.com/events/705498828523259/" target="_blank" rel="noopener" title="Wydarzenie na Facebooku" aria-label="Wydarzenie na Facebooku">&#8599;</a></h1>
+      <div class="sub">Występ: piątek 13 listopada 2026. Irek &amp; Paulina. Gotowi musimy być dzień wcześniej.</div>
+    </div>
+    <div class="tech" title="Informacje techniczne">
+      <div class="techrow">
+        <span class="dot off" id="syncDot"></span>
+        <span id="syncMsg" class="techmsg">łączenie...</span>
+        <button id="retryBtn" onclick="retrySync()" style="display:none">Odśwież</button>
+      </div>
+      <div class="techrow">
+        <button onclick="exportData()" title="Pobierz kopię zaznaczeń">Zapisz kopię</button>
+        <label class="fbtn" title="Wczytaj kopię z pliku">Wczytaj<input type="file" id="importFile" accept="application/json,.json" onchange="importData(event)" hidden></label>
+      </div>
+    </div>
   </div>
 
   <div class="todaybar">
@@ -318,16 +330,15 @@
   }
   function setOnline(v){ online=v; updateSyncUI(); }
   function updateSyncUI(){
-    const dot=document.getElementById("syncDot"), msg=document.getElementById("syncMsg"),
-      link=document.getElementById("syncLink"), copy=document.getElementById("copyBtn"), retry=document.getElementById("retryBtn");
-    copy.style.display="none"; link.textContent="";
+    const dot=document.getElementById("syncDot"), msg=document.getElementById("syncMsg"), retry=document.getElementById("retryBtn");
     if(online){
-      dot.className="dot on"; msg.textContent="Synchronizacja włączona. Ty i Paulina wchodzicie na ten sam adres i widzicie te same dane."; retry.style.display="none";
+      dot.className="dot on"; msg.textContent="zapis wspólny";
+      msg.title="Synchronizacja włączona. Ty i Paulina widzicie te same dane."; retry.style.display="none";
     }else{
-      dot.className="dot off"; msg.textContent="Brak połączenia z bazą - zapis lokalny na tym urządzeniu. Kliknij Spróbuj ponownie albo użyj kopii zapasowej."; retry.style.display="";
+      dot.className="dot off"; msg.textContent="zapis lokalny";
+      msg.title="Brak połączenia z bazą - zapis na tym urządzeniu. Kliknij Odśwież albo zrób kopię."; retry.style.display="";
     }
   }
-  function copyLink(){}
   async function retrySync(){ document.getElementById("syncMsg").textContent="Łączenie..."; await initSync(); }
   function exportData(){
     const blob=new Blob([JSON.stringify(store,null,2)],{type:"application/json"});
