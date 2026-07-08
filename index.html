@@ -39,6 +39,12 @@
   .sync button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
     border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit}
   .sync button:hover{border-color:var(--gold)}
+  .backup{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 16px;margin-bottom:16px;
+    box-shadow:0 2px 10px rgba(120,80,30,.06)}
+  .backup button,.backup .fbtn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+  .backup button:hover,.backup .fbtn:hover{border-color:var(--gold)}
   .todaybar{display:flex;align-items:center;gap:10px;background:var(--panel);
     border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;
     padding:12px 16px;margin-bottom:16px;font-size:15px;color:var(--ink);
@@ -172,6 +178,13 @@
     <button id="retryBtn" onclick="retrySync()" style="display:none">Spróbuj ponownie</button>
   </div>
 
+  <div class="backup">
+    <span>Kopia zapasowa danych:</span>
+    <button onclick="exportData()">Zapisz kopię</button>
+    <label class="fbtn">Wczytaj kopię<input type="file" id="importFile" accept="application/json,.json" onchange="importData(event)" hidden></label>
+    <span style="font-size:11px">- przenieś zaznaczenia na inne urządzenie lub zrób backup</span>
+  </div>
+
   <div class="todaybar">
     <span class="cal">📅</span>
     <span>Dzisiaj jest <b id="todayText">-</b><span class="tz"> (czas warszawski)</span></span>
@@ -223,7 +236,7 @@
     Czerwony <b>✕</b> w rogu = dzień zajęty (wyjazd itp.).<br>
     Za każdy trening dostajesz XP (indywidualny 15, wspólny 10, ginga 5), zbierasz poziomy, serię dni z rzędu i odznaki. Klikaj codziennie, żeby seria rosła.<br>
     Stałe zajęcia: niedziela SoSalsa Gdańsk 17-19, poniedziałek SoSalsa Gdańsk 18-20 + practice 20-21, wtorek Energy Gdynia 20-22, czwartek Rytm Sopot 20-22.<br>
-    Zaznaczenia synchronizują się między Tobą a Pauliną przez wspólny link. Bez sieci działa lokalnie.
+    Zaznaczenia synchronizują się między Tobą a Pauliną przez wspólną bazę. Oboje wchodzicie na ten sam adres. Bez sieci działa lokalnie, a zmiany dogrywają się po powrocie online.
   </div>
 
   <div class="sig">made with love <span class="heart">&#10084;</span> by <a href="https://ikreacja.pl" target="_blank" rel="noopener">iKreacja.pl</a></div>
@@ -269,8 +282,8 @@
   }
 
   // ---------- synchronizacja ----------
-  const REMOTE="https://jsonblob.com/api/jsonBlob";
-  let blobId=new URLSearchParams(location.search).get("id")||localStorage.getItem("kiz-blob")||null;
+  // Firebase Realtime Database - wspólny węzeł dla obu osób
+  const FB="https://ginga1-6e76c-default-rtdb.europe-west1.firebasedatabase.app/state.json";
   let online=false, pushTimer=null;
 
   function mergeDays(remote){
@@ -281,24 +294,13 @@
     }
     return changed;
   }
-  async function createBlob(){
-    const res=await fetch(REMOTE,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({days:store.days})});
-    if(res.status===201||res.ok){
-      const loc=res.headers.get("Location")||"";
-      const id=loc.split("/").filter(Boolean).pop();
-      if(id){ blobId=id; localStorage.setItem("kiz-blob",id); return true; }
-    }
-    return false;
-  }
   async function getRemote(){
-    if(!blobId) return null;
-    const res=await fetch(REMOTE+"/"+blobId,{headers:{"Accept":"application/json"}});
+    const res=await fetch(FB,{headers:{"Accept":"application/json"}});
     if(res.ok) return await res.json();
     return null;
   }
   async function putRemote(){
-    if(!blobId) return false;
-    const res=await fetch(REMOTE+"/"+blobId,{method:"PUT",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({days:store.days})});
+    const res=await fetch(FB,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({days:store.days})});
     return res.ok;
   }
   function schedulePush(){
@@ -314,31 +316,43 @@
     try{ const r=await getRemote(); if(r&&r.days){ if(mergeDays(r.days)){ saveLocal(); render(); } } }
     catch(e){ setOnline(false); }
   }
-  function shareLink(){ return location.origin+location.pathname+"?id="+blobId; }
-  function syncUrl(){ if(blobId){ history.replaceState(null,"","?id="+blobId); } }
   function setOnline(v){ online=v; updateSyncUI(); }
   function updateSyncUI(){
     const dot=document.getElementById("syncDot"), msg=document.getElementById("syncMsg"),
       link=document.getElementById("syncLink"), copy=document.getElementById("copyBtn"), retry=document.getElementById("retryBtn");
-    if(online&&blobId){
-      dot.className="dot on"; msg.textContent="Synchronizacja włączona.";
-      link.textContent=shareLink(); copy.style.display=""; retry.style.display="none";
+    copy.style.display="none"; link.textContent="";
+    if(online){
+      dot.className="dot on"; msg.textContent="Synchronizacja włączona. Ty i Paulina wchodzicie na ten sam adres i widzicie te same dane."; retry.style.display="none";
     }else{
-      dot.className="dot off"; msg.textContent="Tryb offline - zapis tylko na tym urządzeniu.";
-      link.textContent=""; copy.style.display="none"; retry.style.display="";
+      dot.className="dot off"; msg.textContent="Brak połączenia z bazą - zapis lokalny na tym urządzeniu. Kliknij Spróbuj ponownie albo użyj kopii zapasowej."; retry.style.display="";
     }
   }
-  function copyLink(){
-    navigator.clipboard.writeText(shareLink()).then(()=>{
-      const b=document.getElementById("copyBtn"); const t=b.textContent; b.textContent="Skopiowano ✓";
-      setTimeout(()=>b.textContent=t,1500);
-    });
-  }
+  function copyLink(){}
   async function retrySync(){ document.getElementById("syncMsg").textContent="Łączenie..."; await initSync(); }
+  function exportData(){
+    const blob=new Blob([JSON.stringify(store,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); const d=today();
+    a.href=url; a.download="ginga13-kopia-"+d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()+".json";
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  function importData(ev){
+    const f=ev.target.files&&ev.target.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=()=>{ try{ const obj=JSON.parse(rd.result);
+        if(obj&&obj.days){ mergeDays(obj.days); saveLocal(); render(); if(online) schedulePush(); toast("Wczytano kopię ✓"); }
+        else toast("Nieprawidłowy plik kopii"); }
+      catch(e){ toast("Nie udało się wczytać pliku"); }
+      ev.target.value=""; };
+    rd.readAsText(f);
+  }
   async function initSync(){
     try{
-      if(!blobId){ if(await createBlob()){ setOnline(true); syncUrl(); await putRemote(); } else setOnline(false); }
-      else{ const r=await getRemote(); if(r){ if(r.days) mergeDays(r.days); saveLocal(); setOnline(true); syncUrl(); } else setOnline(false); }
+      const r=await getRemote();          // null gdy baza pusta - to normalne przy pierwszym uruchomieniu
+      if(r&&r.days) mergeDays(r.days);
+      saveLocal();
+      await putRemote();                  // dograj lokalne dane do wspólnej bazy
+      setOnline(true);
     }catch(e){ setOnline(false); }
     render();
     if(online){ clearInterval(window._poll); window._poll=setInterval(pollOnce,12000); }
