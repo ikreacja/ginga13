@@ -81,6 +81,35 @@
   .cell.flash{animation:flashcell 1.6s ease}
   @keyframes flashcell{0%,100%{box-shadow:0 1px 4px rgba(120,80,30,.05)}
     30%,60%{box-shadow:0 0 0 3px var(--gold),0 0 16px rgba(210,142,18,.6)}}
+  .navpill{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:999px;
+    padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .navpill:hover{border-color:var(--gold)}
+  .mat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+    margin-bottom:16px;box-shadow:0 3px 14px rgba(120,80,30,.08)}
+  .mat-fixed{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .matlink{display:block;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:11px 14px;color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
+  .matlink:hover{border-color:var(--gold);color:var(--terra)}
+  .mat-sub{font-size:13px;color:var(--muted);margin-bottom:8px}
+  .mat-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .mat-add input{flex:1;min-width:140px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink);font-family:inherit}
+  .mat-add input:focus{outline:none;border-color:var(--gold)}
+  .mat-add button{background:var(--gold);color:#3a2600;border:none;border-radius:8px;
+    padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .mat-add button:hover{background:#e9a52a}
+  .mat-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+  .mat-empty{color:var(--muted);font-size:13px;grid-column:1/-1}
+  .matcard{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .matmain{display:block;color:var(--ink);text-decoration:none}
+  .matthumb{width:100%;height:112px;object-fit:cover;display:block;background:#e7d8bc}
+  .matbadge{display:inline-block;margin:10px 10px 0;font-size:11px;font-weight:700;color:#fff;
+    background:var(--terra);border-radius:6px;padding:3px 8px}
+  .mattitle{display:block;padding:8px 10px 10px;font-size:13px;font-weight:600;line-height:1.3}
+  .matcard:hover{border-color:var(--gold)}
+  .matdel{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;
+    background:rgba(0,0,0,.55);color:#fff;border:none;cursor:pointer;font-size:11px;line-height:1}
+  .matdel:hover{background:var(--red)}
   .countdown{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
   .big{background:var(--panel);border:1px solid var(--line);border-radius:18px;
     padding:22px 24px;flex:1;min-width:170px;text-align:center;box-shadow:0 3px 14px rgba(120,80,30,.08)}
@@ -223,6 +252,7 @@
     <span class="cal">📅</span>
     <span>Dzisiaj jest <b id="todayText">-</b><span class="tz"> (czas warszawski)</span></span>
     <button class="howto" onclick="goTo('instrukcja')">❔ Jak używać?</button>
+    <button class="navpill" onclick="goTo('materialy')">🎵 Materiały</button>
   </div>
 
   <div class="countdown">
@@ -255,6 +285,22 @@
 
   <div class="months" id="months"></div>
 
+  <div class="mat" id="materialy">
+    <div class="foot-title">🎵 Materiały do ćwiczeń</div>
+    <div class="mat-fixed">
+      <a class="matlink" href="https://music.youtube.com/playlist?list=PLUZcxAQpDb5c" target="_blank" rel="noopener">🎧 Playlista muzyczna do ćwiczeń</a>
+      <a class="matlink" href="https://www.youtube.com/@sztukarozlu%C5%BAniania" target="_blank" rel="noopener">🧘 Sztuka rozluźniania - kanał</a>
+      <a class="matlink" href="https://youtu.be/XZTwYSTy2y4" target="_blank" rel="noopener">▶️ Wyróżniony film: rozluźnianie ciała</a>
+    </div>
+    <div class="mat-sub">Wasze materiały - dodawajcie linki do fajnych par, filmów i rolek (YouTube, Facebook, Instagram):</div>
+    <div class="mat-add">
+      <input id="matUrl" type="url" placeholder="Wklej link...">
+      <input id="matTitle" type="text" placeholder="Opis (opcjonalnie)">
+      <button onclick="addLink()">Dodaj</button>
+    </div>
+    <div class="mat-list" id="matList"></div>
+  </div>
+
   <div class="foot" id="instrukcja">
     <div class="foot-title">❔ Jak używać Ginga13</div>
     W każdym dniu są trzy pigułki: <b>I</b> (Irek), <b>P</b> (Paulina), <b>I+P</b> (razem). Kliknij, żeby zaznaczyć. Im więcej, tym jaśniejsza zieleń, a komplet daje ✓.<br>
@@ -285,6 +331,8 @@
 
   // ---------- dane ----------
   let store=loadLocal();
+  if(!store.days) store.days={};
+  if(!store.links) store.links={};
   function loadLocal(){
     try{
       const v2=localStorage.getItem("kiz-cal-v2");
@@ -337,12 +385,15 @@
   function planRefresh(sec){ clearTimeout(refreshTimer); refreshTimer=setTimeout(fbAuth, Math.max(60,(sec-300))*1000); }
   function authQ(){ return idToken?("?auth="+idToken):""; }
 
-  function mergeDays(remote){
+  // scala zdalne dane (dni + linki) po znaczniku czasu
+  function mergeStore(remote){
     let changed=false;
-    for(const k in remote){
-      const r=remote[k], l=store.days[k];
-      if(!l || (r.t||0)>(l.t||0)){ store.days[k]=r; changed=true; }
-    }
+    if(remote && remote.days){ for(const k in remote.days){
+      const r=remote.days[k], l=store.days[k];
+      if(!l || (r.t||0)>(l.t||0)){ store.days[k]=r; changed=true; } } }
+    if(remote && remote.links){ if(!store.links) store.links={}; for(const k in remote.links){
+      const r=remote.links[k], l=store.links[k];
+      if(!l || (r.t||0)>(l.t||0)){ store.links[k]=r; changed=true; } } }
     return changed;
   }
   async function getRemote(){
@@ -351,20 +402,20 @@
     return null;
   }
   async function putRemote(){
-    const res=await fetch(FB+authQ(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({days:store.days})});
+    const res=await fetch(FB+authQ(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({days:store.days,links:store.links})});
     return res.ok;
   }
   function schedulePush(){
     if(!online){ return; }
     clearTimeout(pushTimer);
     pushTimer=setTimeout(async()=>{
-      try{ const r=await getRemote(); if(r&&r.days) mergeDays(r.days); await putRemote(); saveLocal(); render(); }
+      try{ const r=await getRemote(); if(r) mergeStore(r); await putRemote(); saveLocal(); render(); }
       catch(e){ setOnline(false); }
     },700);
   }
   async function pollOnce(){
     if(!online) return;
-    try{ const r=await getRemote(); if(r&&r.days){ if(mergeDays(r.days)){ saveLocal(); render(); } } }
+    try{ const r=await getRemote(); if(r){ if(mergeStore(r)){ saveLocal(); render(); } } }
     catch(e){ setOnline(false); }
   }
   function setOnline(v){ online=v; updateSyncUI(); }
@@ -390,7 +441,7 @@
     const f=ev.target.files&&ev.target.files[0]; if(!f) return;
     const rd=new FileReader();
     rd.onload=()=>{ try{ const obj=JSON.parse(rd.result);
-        if(obj&&obj.days){ mergeDays(obj.days); saveLocal(); render(); if(online) schedulePush(); toast("Wczytano kopię ✓"); }
+        if(obj&&(obj.days||obj.links)){ mergeStore(obj); saveLocal(); render(); if(online) schedulePush(); toast("Wczytano kopię ✓"); }
         else toast("Nieprawidłowy plik kopii"); }
       catch(e){ toast("Nie udało się wczytać pliku"); }
       ev.target.value=""; };
@@ -400,7 +451,7 @@
     try{
       await fbAuth();                     // najpierw token (wymagany przez reguły)
       const r=await getRemote();          // null gdy baza pusta - normalne przy pierwszym uruchomieniu
-      if(r&&r.days) mergeDays(r.days);
+      if(r) mergeStore(r);
       saveLocal();
       const ok=await putRemote();         // dograj lokalne dane do wspólnej bazy
       setOnline(!!ok);
@@ -410,7 +461,55 @@
   }
 
   // ---------- render ----------
-  function render(){ buildMonths(); updateCounters(); }
+  function render(){ buildMonths(); updateCounters(); renderMaterials(); }
+
+  // ---------- materiały (linki) ----------
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function safeUrl(u){ return /^https?:\/\//i.test(u||"") ? u : ""; }
+  function ytId(u){
+    let m=u.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/);
+    return m?m[1]:null;
+  }
+  function sourceTag(u){
+    if(/youtu\.?be|youtube\.com/i.test(u)) return "YouTube";
+    if(/facebook\.com|fb\.watch/i.test(u)) return "Facebook";
+    if(/instagram\.com/i.test(u)) return "Instagram";
+    if(/tiktok\.com/i.test(u)) return "TikTok";
+    try{ return new URL(u).hostname.replace(/^www\./,""); }catch(e){ return "link"; }
+  }
+  function addLink(){
+    const urlEl=document.getElementById("matUrl"), titEl=document.getElementById("matTitle");
+    const url=safeUrl((urlEl.value||"").trim());
+    if(!url){ toast("Wklej poprawny link (http/https)"); return; }
+    const id="l"+Date.now()+Math.floor(Math.random()*1000);
+    store.links[id]={url:url,title:(titEl.value||"").trim(),t:Date.now(),del:false};
+    urlEl.value=""; titEl.value="";
+    saveLocal(); renderMaterials(); schedulePush(); toast("Dodano materiał ✓");
+  }
+  function delLink(id){
+    if(!store.links[id]) return;
+    if(!confirm("Usunąć ten materiał?")) return;
+    store.links[id]={...store.links[id],del:true,t:Date.now()};
+    saveLocal(); renderMaterials(); schedulePush();
+  }
+  function renderMaterials(){
+    const list=document.getElementById("matList"); if(!list) return;
+    const items=Object.keys(store.links||{})
+      .map(id=>({id,...store.links[id]}))
+      .filter(x=>x&&!x.del&&safeUrl(x.url))
+      .sort((a,b)=>(a.t||0)-(b.t||0));
+    if(!items.length){ list.innerHTML='<div class="mat-empty">Nic tu jeszcze nie ma. Wklejcie link do fajnej pary, filmu albo rolki.</div>'; return; }
+    list.innerHTML=items.map(x=>{
+      const yt=ytId(x.url); const title=x.title||sourceTag(x.url);
+      const thumb=yt?('<img class="matthumb" src="https://i.ytimg.com/vi/'+yt+'/hqdefault.jpg" alt="" loading="lazy">')
+                     :('<span class="matbadge">'+esc(sourceTag(x.url))+'</span>');
+      return '<div class="matcard">'
+        +'<a class="matmain" href="'+esc(x.url)+'" target="_blank" rel="noopener">'
+        + thumb + '<span class="mattitle">'+esc(title)+'</span></a>'
+        +'<button class="matdel" title="Usuń" onclick="delLink(\''+x.id+'\')">✕</button>'
+        +'</div>';
+    }).join("");
+  }
   function buildMonths(){
     const cont=document.getElementById("months"); cont.innerHTML="";
     let y=START.y,m=START.m;
