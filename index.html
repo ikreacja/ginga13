@@ -149,6 +149,8 @@
   .cell.weekend .dnum{color:var(--terra)}
   .cell.today{outline:2px solid var(--gold);outline-offset:-2px}
   .cell.past{opacity:.5}
+  .cell.locked{background:var(--panel2);opacity:.4;box-shadow:none;cursor:default}
+  .cell.locked .dnum{color:var(--muted);font-weight:600}
   .cell.comp{background:linear-gradient(160deg,#f7dfae,#fff7e6);border-color:var(--gold)}
   .cell.comp .dnum{color:var(--terra)}
   .comp-tag{font-family:"Fraunces",serif;font-size:10px;color:var(--red);font-weight:700;margin-top:2px;line-height:1.15}
@@ -530,6 +532,7 @@
       if(d<t) c.classList.add("past");
       const isComp=(d.getFullYear()===TARGET.getFullYear()&&d.getMonth()===TARGET.getMonth()&&d.getDate()===TARGET.getDate());
       if(isComp){ c.classList.add("comp"); c.innerHTML='<div class="dnum">'+dn+'</div><div class="comp-tag">WYSTĘP<br>Champions</div><a class="evlink" href="https://www.facebook.com/events/705498828523259/" target="_blank" rel="noopener">wydarzenie ↗</a>'; grid.appendChild(c); continue; }
+      if(d>TARGET){ c.classList.add("locked"); c.innerHTML='<div class="dnum">'+dn+'</div>'; grid.appendChild(c); continue; }
       const data=cell(k); const cnt=(data.i?1:0)+(data.p?1:0)+(data.r?1:0);
       if(data.busy) c.classList.add("s-red");
       else if(cnt===1) c.classList.add("lvl1");
