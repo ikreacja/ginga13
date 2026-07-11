@@ -98,18 +98,24 @@
   .mat-add button{background:var(--gold);color:#3a2600;border:none;border-radius:8px;
     padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
   .mat-add button:hover{background:#e9a52a}
-  .mat-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
-  .mat-empty{color:var(--muted);font-size:13px;grid-column:1/-1}
-  .matcard{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .matmain{display:block;color:var(--ink);text-decoration:none}
-  .matthumb{width:100%;height:112px;object-fit:cover;display:block;background:#e7d8bc}
-  .matbadge{display:inline-block;margin:10px 10px 0;font-size:11px;font-weight:700;color:#fff;
-    background:var(--terra);border-radius:6px;padding:3px 8px}
-  .mattitle{display:block;padding:8px 10px 10px;font-size:13px;font-weight:600;line-height:1.3}
-  .matcard:hover{border-color:var(--gold)}
-  .matdel{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;
-    background:rgba(0,0,0,.55);color:#fff;border:none;cursor:pointer;font-size:11px;line-height:1}
-  .matdel:hover{background:var(--red)}
+  .mat-list{display:flex;flex-direction:column;gap:8px}
+  .mat-empty{color:var(--muted);font-size:13px}
+  .matcard{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:12px;padding:8px 10px}
+  .matcard.star{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+  .matcard.dragover{border-color:var(--terra);border-style:dashed}
+  .drag{cursor:grab;color:var(--muted);font-size:14px;user-select:none;flex:none}
+  .matmain{display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:var(--ink);text-decoration:none}
+  .matthumb{width:72px;height:44px;object-fit:cover;border-radius:6px;flex:none;background:#e7d8bc}
+  .matbadge{flex:none;font-size:10px;font-weight:700;color:#fff;background:var(--terra);border-radius:6px;padding:4px 8px}
+  .mattitle{font-size:14px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .matmain:hover .mattitle{color:var(--terra)}
+  .matctrl{display:flex;align-items:center;gap:4px;flex:none}
+  .matctrl button{width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--panel);
+    color:var(--muted);cursor:pointer;font-size:13px;line-height:1;font-family:inherit;padding:0}
+  .matctrl button:hover{border-color:var(--gold);color:var(--ink)}
+  .matctrl .starbtn.on{color:var(--gold);border-color:var(--gold)}
+  .matctrl .matdel:hover{border-color:var(--red);color:var(--red)}
   .countdown{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
   .big{background:var(--panel);border:1px solid var(--line);border-radius:18px;
     padding:22px 24px;flex:1;min-width:170px;text-align:center;box-shadow:0 3px 14px rgba(120,80,30,.08)}
@@ -479,12 +485,20 @@
     if(/tiktok\.com/i.test(u)) return "TikTok";
     try{ return new URL(u).hostname.replace(/^www\./,""); }catch(e){ return "link"; }
   }
+  function sortedLinks(){
+    return Object.keys(store.links||{}).map(id=>({id,...store.links[id]}))
+      .filter(x=>x&&!x.del&&safeUrl(x.url))
+      .sort((a,b)=>{
+        const sa=a.star?0:1, sb=b.star?0:1; if(sa!==sb) return sa-sb;   // gwiazdką na górę
+        return (a.ord!=null?a.ord:a.t||0)-(b.ord!=null?b.ord:b.t||0);   // potem ręczna kolejność
+      });
+  }
   function addLink(){
     const urlEl=document.getElementById("matUrl"), titEl=document.getElementById("matTitle");
     const url=safeUrl((urlEl.value||"").trim());
     if(!url){ toast("Wklej poprawny link (http/https)"); return; }
     const id="l"+Date.now()+Math.floor(Math.random()*1000);
-    store.links[id]={url:url,title:(titEl.value||"").trim(),t:Date.now(),del:false};
+    store.links[id]={url:url,title:(titEl.value||"").trim(),t:Date.now(),ord:Date.now(),star:false,del:false};
     urlEl.value=""; titEl.value="";
     saveLocal(); renderMaterials(); schedulePush(); toast("Dodano materiał ✓");
   }
@@ -494,22 +508,58 @@
     store.links[id]={...store.links[id],del:true,t:Date.now()};
     saveLocal(); renderMaterials(); schedulePush();
   }
+  function editLink(id){
+    const cur=store.links[id]; if(!cur) return;
+    const v=prompt("Opis materiału (np. dodaj numer, żeby łatwiej znaleźć):", cur.title||"");
+    if(v===null) return;
+    store.links[id]={...cur,title:v.trim(),t:Date.now()};
+    saveLocal(); renderMaterials(); schedulePush();
+  }
+  function starLink(id){
+    const cur=store.links[id]; if(!cur) return;
+    store.links[id]={...cur,star:!cur.star,t:Date.now()};
+    saveLocal(); renderMaterials(); schedulePush();
+  }
+  function applyOrder(ids){
+    const now=Date.now();
+    ids.forEach((id,i)=>{ const cur=store.links[id]; if(cur && cur.ord!==i){ store.links[id]={...cur,ord:i,t:now}; } });
+    saveLocal(); renderMaterials(); schedulePush();
+  }
+  function moveLink(id,dir){
+    const items=sortedLinks(); const idx=items.findIndex(x=>x.id===id); const j=idx+dir;
+    if(idx<0||j<0||j>=items.length) return;
+    const ids=items.map(x=>x.id); const tmp=ids[idx]; ids[idx]=ids[j]; ids[j]=tmp; applyOrder(ids);
+  }
+  let dragId=null;
+  function dragStart(e,id){ dragId=id; e.dataTransfer.effectAllowed="move"; }
+  function dragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect="move"; e.currentTarget.classList.add("dragover"); }
+  function dragLeave(e){ e.currentTarget.classList.remove("dragover"); }
+  function dragDrop(e,toId){ e.preventDefault(); e.currentTarget.classList.remove("dragover");
+    if(!dragId||dragId===toId){ dragId=null; return; }
+    const ids=sortedLinks().map(x=>x.id);
+    const fi=ids.indexOf(dragId), ti=ids.indexOf(toId); if(fi<0||ti<0){ dragId=null; return; }
+    ids.splice(fi,1); ids.splice(ti,0,dragId); dragId=null; applyOrder(ids);
+  }
   function renderMaterials(){
     const list=document.getElementById("matList"); if(!list) return;
-    const items=Object.keys(store.links||{})
-      .map(id=>({id,...store.links[id]}))
-      .filter(x=>x&&!x.del&&safeUrl(x.url))
-      .sort((a,b)=>(a.t||0)-(b.t||0));
+    const items=sortedLinks();
     if(!items.length){ list.innerHTML='<div class="mat-empty">Nic tu jeszcze nie ma. Wklejcie link do fajnej pary, filmu albo rolki.</div>'; return; }
     list.innerHTML=items.map(x=>{
       const yt=ytId(x.url); const title=x.title||sourceTag(x.url);
       const thumb=yt?('<img class="matthumb" src="https://i.ytimg.com/vi/'+yt+'/hqdefault.jpg" alt="" loading="lazy">')
                      :('<span class="matbadge">'+esc(sourceTag(x.url))+'</span>');
-      return '<div class="matcard">'
+      return '<div class="matcard'+(x.star?" star":"")+'" draggable="true" '
+        +'ondragstart="dragStart(event,\''+x.id+'\')" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,\''+x.id+'\')">'
+        +'<span class="drag" title="Przeciągnij, aby zmienić kolejność">⣿</span>'
         +'<a class="matmain" href="'+esc(x.url)+'" target="_blank" rel="noopener">'
         + thumb + '<span class="mattitle">'+esc(title)+'</span></a>'
+        +'<div class="matctrl">'
+        +'<button class="starbtn'+(x.star?" on":"")+'" title="Ważne" onclick="starLink(\''+x.id+'\')">'+(x.star?"★":"☆")+'</button>'
+        +'<button title="Edytuj opis" onclick="editLink(\''+x.id+'\')">✎</button>'
+        +'<button title="W górę" onclick="moveLink(\''+x.id+'\',-1)">↑</button>'
+        +'<button title="W dół" onclick="moveLink(\''+x.id+'\',1)">↓</button>'
         +'<button class="matdel" title="Usuń" onclick="delLink(\''+x.id+'\')">✕</button>'
-        +'</div>';
+        +'</div></div>';
     }).join("");
   }
   function buildMonths(){
