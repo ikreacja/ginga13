@@ -98,6 +98,8 @@
   .mat-add button{background:var(--gold);color:#3a2600;border:none;border-radius:8px;
     padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
   .mat-add button:hover{background:#e9a52a}
+  .mat-add .matseed{background:var(--panel2);color:var(--ink);border:1px solid var(--gold)}
+  .mat-add .matseed:hover{background:var(--panel)}
   .mat-list{display:flex;flex-direction:column;gap:8px}
   .mat-empty{color:var(--muted);font-size:13px}
   .matcard{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);
@@ -305,6 +307,7 @@
       <input id="matUrl" type="url" placeholder="Wklej link...">
       <input id="matTitle" type="text" placeholder="Opis (opcjonalnie)">
       <button onclick="addLink()">Dodaj</button>
+      <button class="matseed" onclick="forceSeed()" title="Dodaje przygotowane materiały z par i ćwiczeń">＋ Dodaj polecane materiały</button>
     </div>
     <div class="mat-list" id="matList"></div>
   </div>
@@ -464,6 +467,7 @@
       const ok=await putRemote();         // dograj lokalne dane do wspólnej bazy
       setOnline(!!ok);
     }catch(e){ setOnline(false); }
+    seedLinks();                          // jednorazowo dodaj brakujące materiały (stałe id, bez duplikatów)
     render();
     if(online){ clearInterval(window._poll); window._poll=setInterval(pollOnce,12000); }
   }
@@ -492,6 +496,36 @@
         const sa=a.star?0:1, sb=b.star?0:1; if(sa!==sb) return sa-sb;   // gwiazdką na górę
         return (a.ord!=null?a.ord:a.t||0)-(b.ord!=null?b.ord:b.t||0);   // potem ręczna kolejność
       });
+  }
+  // deterministyczne id z URL - ten sam link daje to samo id na każdym urządzeniu (brak duplikatów)
+  function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return "s"+(h>>>0).toString(36); }
+  const SEED_LINKS=[
+    {u:"https://youtu.be/fQCbKnb37-k", t:"Bonifacio Aurio - close embrace tricks"},
+    {u:"https://youtu.be/MCJ4bkAajKI", t:"Eliza Sala - ginga movement"},
+    {u:"https://www.facebook.com/share/r/1EySsFFz8s/", t:"Biel Abrantes - smooth kizomba"},
+    {u:"https://www.facebook.com/share/v/18wdoHftSj/", t:"Lipio Domingues - kizomba elegancja"},
+    {u:"https://www.facebook.com/share/v/1cM6SEQYms/", t:"Ginga w parze - Edmilson Dsb"},
+    {u:"https://www.facebook.com/share/v/1DMEkBbY4T/", t:"Frazowanie w muzyce - Edmilson"},
+    {u:"https://www.facebook.com/share/v/1EATCUiJPs/", t:"Przejścia między pozycjami - Edmilson"},
+    {u:"https://youtu.be/U2LP1dH2JXE?list=PLox_uuTMxyA_yojqa5RaArF-jyUnEQQFb", t:"Afro - rozluźnianie"}
+  ];
+  function seedLinks(){
+    if(localStorage.getItem("kiz-seed-1")) return;
+    let added=false;
+    SEED_LINKS.forEach((s,i)=>{ const id=hashStr(s.u);
+      if(!store.links[id]){ store.links[id]={url:s.u,title:s.t,t:Date.now(),ord:i,star:false,del:false}; added=true; } });
+    localStorage.setItem("kiz-seed-1","1");
+    if(added){ saveLocal(); if(online) schedulePush(); }
+  }
+  // ręczne dodanie/odtworzenie polecanych materiałów (ignoruje flagę, bez duplikatów)
+  function forceSeed(){
+    let added=0;
+    SEED_LINKS.forEach((s,i)=>{ const id=hashStr(s.u); const ex=store.links[id];
+      if(!ex){ store.links[id]={url:s.u,title:s.t,t:Date.now(),ord:i,star:false,del:false}; added++; }
+      else if(ex.del){ store.links[id]={...ex,del:false,t:Date.now()}; added++; } });
+    localStorage.setItem("kiz-seed-1","1");
+    saveLocal(); renderMaterials(); if(online) schedulePush();
+    toast(added?("Dodano "+added+" materiałów ✓"):"Wszystkie polecane już są na liście");
   }
   function addLink(){
     const urlEl=document.getElementById("matUrl"), titEl=document.getElementById("matTitle");
